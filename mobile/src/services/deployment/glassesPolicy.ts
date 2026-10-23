@@ -11,6 +11,7 @@ const MODEL_IDS: Record<string, string> = {
   [DeviceTypes.Z100]: "vuzix-z100",
   [DeviceTypes.NEX]: "mentra-display",
   [DeviceTypes.NIMO]: "nimo",
+  [DeviceTypes.INMO_GO3]: "inmo-go3",
 }
 
 export function deploymentGlassesModelId(deviceModel: string, ar99ProjectName?: string): string | null {

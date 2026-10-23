@@ -24,6 +24,7 @@ enum class DeviceModel(val deviceType: String) {
     FRAME(DeviceTypes.FRAME),
     NIMO(DeviceTypes.NIMO),
     AR99(DeviceTypes.AR99),
+    INMO_GO3(DeviceTypes.INMO_GO3),
     SIMULATED(DeviceTypes.SIMULATED),
     R1(ControllerTypes.R1);
 

@@ -208,6 +208,20 @@ export const HARDWARE_CAPABILITIES: Record<string, Capabilities> = {
       hasVAD: false,
     },
   },
+  // Prototype: display only, over GATT on classic Bluetooth. Frames are 640x480 PNGs of which
+  // rows 60-479 are visible; the phone renders text and bitmaps into them.
+  [DeviceTypes.INMO_GO3]: {
+    ...none,
+    modelName: DeviceTypes.INMO_GO3,
+    hasDisplay: true,
+    display: {
+      ...none.display,
+      canDisplayBitmap: true,
+      resolution: { width: 640, height: 420 },
+      maxTextLines: 10,
+      adjustBrightness: false,
+    },
+  },
   [none.modelName]: none,
 };
 

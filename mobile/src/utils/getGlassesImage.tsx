@@ -44,7 +44,9 @@ export const getGlassesImage = (glasses: string | null) => {
     case "Mentra Live":
     case "mentra_live":
       return require("../../assets/glasses/mentra_live/mentra_live.png")
+    // The INMO Air image stands in for the GO3 until there is a GO3 product image.
     case "inmo_air":
+    case DeviceTypes.INMO_GO3:
       return require("../../assets/glasses/inmo_air.png")
     case "tcl_rayneo_x_two":
       return require("../../assets/glasses/tcl_rayneo_x_two.png")

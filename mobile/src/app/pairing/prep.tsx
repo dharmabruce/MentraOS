@@ -274,6 +274,19 @@ export default function PairingPrepScreen() {
     )
   }
 
+  const InmoGo3PairingGuide = () => {
+    return (
+      <View className="flex-1 mt-6">
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Text tx="pairing:instructions" className="text-2xl font-bold mb-4 text-secondary-foreground" />
+          <Text className="text-lg text-secondary-foreground mb-2" tx="pairing:inmoGo3Step1" />
+          <Text className="text-lg text-secondary-foreground mb-2" tx="pairing:inmoGo3Step2" />
+          <Text className="text-lg text-secondary-foreground mb-2" tx="pairing:inmoGo3Step3" />
+        </ScrollView>
+      </View>
+    )
+  }
+
   const renderGuide = () => {
     switch (deviceModel) {
       case DeviceTypes.SIMULATED:
@@ -294,6 +307,8 @@ export default function PairingPrepScreen() {
         return <NimoPreparation onContinue={advanceToPairing} />
       case DeviceTypes.AR99:
         return <Ar99PairingGuide />
+      case DeviceTypes.INMO_GO3:
+        return <InmoGo3PairingGuide />
     }
 
     throw new Error(`Unknown model name: ${deviceModel}`)

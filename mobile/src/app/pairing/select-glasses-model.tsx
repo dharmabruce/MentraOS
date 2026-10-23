@@ -62,7 +62,8 @@ export default function SelectGlassesModelScreen() {
   const getDisplayName = (option: GlassesOption) => option.displayName ?? option.deviceModel
   const getImageSource = (option: GlassesOption) => option.imageSource ?? getGlassesImage(option.deviceModel)
 
-  const SUPER_MODE_ONLY_MODELS = new Set<string>([DeviceTypes.NEX])
+  // INMO GO3 support is an Android-only, display-only prototype.
+  const SUPER_MODE_ONLY_MODELS = new Set<string>([DeviceTypes.NEX, DeviceTypes.INMO_GO3])
 
   const ar99Options: GlassesOption[] = AR99_MODEL_OPTIONS.map((option) => ({
     key: option.key,
@@ -83,13 +84,22 @@ export default function SelectGlassesModelScreen() {
     {deviceModel: DeviceTypes.Z100, key: "vuzix-z100", modelId: "vuzix-z100"},
     {deviceModel: DeviceTypes.NEX, key: "mentra_nex", modelId: "mentra-display"},
     {deviceModel: DeviceTypes.NIMO, key: "nimo", modelId: "nimo"},
+    {
+      deviceModel: DeviceTypes.INMO_GO3,
+      key: "inmo_go3",
+      modelId: "inmo-go3",
+      manufacturerName: "INMO",
+      displayName: "INMO GO3",
+    },
   ]
 
   const deployment = deploymentStore.getActive()
   const allowedModels = deployment.manifest.glasses.allowedModelsOverride
-  const glassesOptions = (Platform.OS === "ios" ? sharedOptions : sharedOptions).filter(
-    (option) => allowedModels === null || allowedModels.includes(option.modelId),
-  )
+  const glassesOptions = (
+    Platform.OS === "ios"
+      ? sharedOptions.filter((option) => option.deviceModel !== DeviceTypes.INMO_GO3)
+      : sharedOptions
+  ).filter((option) => allowedModels === null || allowedModels.includes(option.modelId))
 
   const triggerGlassesPairingGuide = async (option: GlassesOption) => {
     if (option.deviceModel === DeviceTypes.LIVE) {

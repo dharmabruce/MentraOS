@@ -256,6 +256,9 @@ const en = {
     legacyFirmwareLabel: "Legacy software",
     ar99Step1: "1. Make sure Bluetooth is turned on on your phone.",
     ar99Step2: "2. Press and hold the power button for 3 to 5 seconds to turn on the glasses.",
+    inmoGo3Step1: "1. Turn on your INMO GO3.",
+    inmoGo3Step2: "2. Pair it in your phone's Bluetooth settings. Its name starts with INMO GO3.",
+    inmoGo3Step3: "3. Come back here and tap Continue. The INMO Global app can stay connected.",
   },
   ar99Ota: {
     checkingFirmware: "Checking firmware",
@@ -380,6 +383,7 @@ const en = {
     g2Connected: "Even Realities G2 connected",
     r1Connected: "Even Realities R1 connected",
     nimoConnected: "NIMO connected",
+    inmoGo3Connected: "INMO GO3 connected",
     osWelcomeTitle: "Welcome to Mentra",
     osWelcomeSubtitle: "Learn how to use apps on your glasses",
     osEndTitle: "You're all set",

@@ -159,6 +159,19 @@ export default function PairingSuccessScreen() {
         },
       ]
       break
+    case DeviceTypes.INMO_GO3:
+      steps = [
+        {
+          name: "Start Onboarding",
+          type: "image",
+          source: glassesImage,
+          containerClassName: "px-12",
+          transition: false,
+          title: translate("common:success"),
+          subtitle: translate("onboarding:inmoGo3Connected"),
+        },
+      ]
+      break
     case DeviceTypes.AR99:
       steps = [
         {

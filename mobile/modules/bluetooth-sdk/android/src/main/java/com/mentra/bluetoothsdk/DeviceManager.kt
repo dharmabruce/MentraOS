@@ -25,6 +25,7 @@ import com.mentra.bluetoothsdk.sgcs.Mach1
 import com.mentra.bluetoothsdk.sgcs.MentraLive
 import com.mentra.bluetoothsdk.sgcs.MentraLivePairingStateStore
 import com.mentra.bluetoothsdk.sgcs.MentraNex
+import com.mentra.bluetoothsdk.sgcs.InmoGo3
 import com.mentra.bluetoothsdk.sgcs.Nimo
 import com.mentra.bluetoothsdk.sgcs.NimoResourceDiagnostics
 import com.mentra.bluetoothsdk.sgcs.SGCManager
@@ -1416,6 +1417,8 @@ class DeviceManager internal constructor(initializeHardware: Boolean) {
             sgc = createOptionalMach1Sgc(DeviceTypes.Z100)
         } else if (wearable.contains(DeviceTypes.NIMO)) {
             sgc = Nimo()
+        } else if (wearable.contains(DeviceTypes.INMO_GO3)) {
+            sgc = InmoGo3()
         } else if (wearable.contains(DeviceTypes.FRAME)) {
             // sgc = FrameManager()
         }

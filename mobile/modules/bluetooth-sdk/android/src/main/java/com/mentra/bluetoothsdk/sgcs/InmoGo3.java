@@ -13,6 +13,7 @@ import com.mentra.bluetoothsdk.PhotoRequest;
 import com.mentra.bluetoothsdk.sgcs.inmo.Go3Canvas;
 import com.mentra.bluetoothsdk.sgcs.inmo.Go3GattChannel;
 import com.mentra.bluetoothsdk.sgcs.inmo.Go3Link;
+import com.mentra.bluetoothsdk.sgcs.inmo.SendRate;
 import com.mentra.bluetoothsdk.utils.ConnTypes;
 import com.mentra.bluetoothsdk.utils.DeviceTypes;
 
@@ -32,9 +33,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * coexists with the INMO Global app. The GO3 must already be paired in Android Bluetooth settings.
  *
  * <p>The GO3 shows images through its Navigation app, so text and bitmaps are rendered to a 640×480
- * PNG ({@link Go3Canvas}) and sent as one frame. GATT carries about one frame per second, so only the
+ * PNG ({@link Go3Canvas}) and sent as one frame, paced by an adaptive rate ({@link SendRate}); only the
  * newest pending frame is sent. Never writes or releases a binding (RFCOMM-only, not supported yet).
- * Protocol sequence: lens-spark@79d33c2 docs/PROTOCOL.md.
+ * Protocol sequence: lens-spark@3e2158f docs/PROTOCOL.md.
  */
 @SuppressLint("MissingPermission")
 public class InmoGo3 extends SGCManager {
@@ -43,18 +44,28 @@ public class InmoGo3 extends SGCManager {
   private static final long CHECK_TO_SESSION_PAUSE_MS = 500;
   private static final long RECONNECT_DELAY_MS = 2000;
   private static final int MAX_RECONNECT_ATTEMPTS = 5;
+  /**
+   * The first image after connecting can reach the glasses before their Navigation app is ready, leaving only
+   * the empty Navigation view (seen on hardware 2026-10-24, and in lens-spark@3e2158f). The newest frame is
+   * sent once more this long after every connect.
+   */
+  private static final long SETTLE_RESEND_MS = 2000;
 
   private final Context context;
   private final ScheduledExecutorService worker =
       Executors.newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, TAG));
   /** Newest frame not yet shown; rendered on the worker. */
   private final AtomicReference<Callable<byte[]>> pendingFrame = new AtomicReference<>();
+  /** Adaptive send rate; outlives connections so the rate and its marks survive reconnects. */
+  private final SendRate rate = new SendRate();
 
   // Worker-thread state.
   private Go3Link session;
   private BluetoothDevice device;
   private int reconnectAttempts;
   private boolean drainScheduled;
+  /** The last frame sent; shown again after a reconnect and by the settle resend. */
+  private byte[] lastFrame;
   /** True between connectById() and disconnect(); drives automatic reconnects. */
   private volatile boolean wanted;
 
@@ -141,9 +152,12 @@ public class InmoGo3 extends SGCManager {
       session = link;
       Bridge.log(TAG + ": session started (" + (existing != null ? "login" : "no login") + ")");
       markReady();
-      // The first image opens the Navigation view; show the pending frame, or a blank one.
-      pendingFrame.compareAndSet(null, Go3Canvas::blank);
+      // The first image opens the Navigation view: the pending frame, else the last one shown, else blank.
+      byte[] resume = lastFrame;
+      pendingFrame.compareAndSet(null, resume != null ? () -> resume : Go3Canvas::blank);
       drain();
+      Go3Link started = link;
+      worker.schedule(() -> resendAfterSettle(started), SETTLE_RESEND_MS, TimeUnit.MILLISECONDS);
     } catch (IOException | InterruptedException failure) {
       if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
       Bridge.log(TAG + ": connect failed: " + failure.getMessage());
@@ -158,7 +172,7 @@ public class InmoGo3 extends SGCManager {
 
   private Go3Link newLink() {
     return new Go3Link(
-        new Go3GattChannel(context, device),
+        new Go3GattChannel(context, device, rate),
         Thread::sleep,
         screen -> Bridge.log(TAG + ": glasses screen " + (screen == 1 ? "on" : "off")));
   }
@@ -216,6 +230,7 @@ public class InmoGo3 extends SGCManager {
     pendingFrame.set(null);
     run(() -> {
       closeSession();
+      lastFrame = null;
       markDisconnected();
     });
   }
@@ -264,18 +279,36 @@ public class InmoGo3 extends SGCManager {
     drainScheduled = false;
     Callable<byte[]> frame;
     while (session != null && (frame = pendingFrame.getAndSet(null)) != null) {
+      byte[] png;
       try {
-        session.showImage(frame.call());
-      } catch (IOException failure) {
-        Bridge.log(TAG + ": frame not sent: " + failure.getMessage());
-        if (session == null) return;
-        closeSession();
-        markDisconnected();
-        scheduleReconnect();
-        return;
+        png = frame.call();
       } catch (Exception renderFailure) {
         Bridge.log(TAG + ": frame not rendered: " + renderFailure.getMessage());
+        continue;
       }
+      if (!send(png)) return;
+    }
+  }
+
+  /** Worker: the settle resend, unless the session changed or a newer frame is already queued. */
+  private void resendAfterSettle(Go3Link started) {
+    if (session != started || pendingFrame.get() != null || lastFrame == null) return;
+    send(lastFrame);
+  }
+
+  /** Worker: shows one frame. On failure, drops the session and schedules a reconnect. */
+  private boolean send(byte[] png) {
+    try {
+      session.showImage(png);
+      lastFrame = png;
+      return true;
+    } catch (IOException failure) {
+      Bridge.log(TAG + ": frame not sent: " + failure.getMessage());
+      if (session == null) return false;
+      closeSession();
+      markDisconnected();
+      scheduleReconnect();
+      return false;
     }
   }
 

@@ -58,6 +58,9 @@ export { NEX_PROFILE, NEX_HYPHEN_WIDTH_PX, NEX_SPACE_WIDTH_PX } from "./profiles
 // NIMO Dynamic Layout V1
 export {NIMO_PROFILE} from "./profiles"
 
+// INMO GO3 (prototype, phone-rendered frames)
+export {GO3_PROFILE} from "./profiles"
+
 // Import for factory functions
 import { G1_PROFILE_LEGACY, G2_PROFILE, Z100_PROFILE, NEX_PROFILE } from "./profiles";
 

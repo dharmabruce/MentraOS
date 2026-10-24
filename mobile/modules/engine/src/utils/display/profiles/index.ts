@@ -29,3 +29,6 @@ export {NEX_PROFILE, NEX_HYPHEN_WIDTH_PX, NEX_SPACE_WIDTH_PX} from "./nex"
 
 // NIMO Dynamic Layout V1
 export {NIMO_PROFILE} from "./nimo"
+
+// INMO GO3 (prototype, phone-rendered frames)
+export {GO3_PROFILE} from "./go3"

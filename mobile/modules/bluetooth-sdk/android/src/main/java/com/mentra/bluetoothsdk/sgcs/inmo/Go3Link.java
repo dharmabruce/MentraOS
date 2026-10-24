@@ -15,7 +15,7 @@ import java.util.function.IntConsumer;
  * GO3 protocol over one GATT connection: binding query, session start, and image presentation.
  * Never binds or releases: that is RFCOMM-only and needs explicit user confirmation, which this SDK
  * doesn't offer yet. Blocking; one worker thread at a time.
- * Ported from lens-spark@79d33c2 (link/Go3Link.java and the GATT half of link/Connector.java).
+ * Ported from lens-spark@3e2158f (link/Go3Link.java and link/Connector.java).
  */
 public final class Go3Link implements Closeable {
     /** A raw byte pipe to the glasses. {@link #close()} may be called from any thread. */
@@ -36,6 +36,9 @@ public final class Go3Link implements Closeable {
      * ours (measured 2026-10-14). After this long without an answer, start a session without login.
      */
     static final long QUERY_TIMEOUT_MS = 3000;
+
+    /** Sent back-to-back after the first Open, the first image was lost (lens-spark@3e2158f). */
+    static final long FIRST_OPEN_SETTLE_MS = 300;
 
     /** The glasses didn't answer a binding query in time. */
     public static final class NoAnswer extends IOException {
@@ -121,11 +124,14 @@ public final class Go3Link implements Closeable {
         protocol.advertiseNavigation(out());
     }
 
-    /** Shows one PNG: Open–image–Open for the first image on this link, image–Open after that. */
+    /** Shows one PNG: Open–pause–image–Open for the first image on this link, image–Open after that. */
     public void showImage(byte[] png) throws IOException {
         boolean first = !presentedFirstImage;
         try {
-            if (first) protocol.openNavigation(out());
+            if (first) {
+                protocol.openNavigation(out());
+                pause(FIRST_OPEN_SETTLE_MS);
+            }
             protocol.destinationArrived(out(), png);
             protocol.openNavigation(out());
             presentedFirstImage = true;

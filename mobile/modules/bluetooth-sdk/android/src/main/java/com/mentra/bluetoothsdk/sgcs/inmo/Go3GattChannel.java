@@ -23,13 +23,16 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 /**
  * GATT over BR/EDR (not LE) to service 0x2020: the path that coexists with INMO Global.
- * One AA55 frame per write-with-response; each write waits for its callback (backpressure).
+ * One AA55 frame per write, without response, paced by {@link SendRate}. The last write of each short
+ * message is confirmed: the Open after each image (one confirmation per frame) and session setup messages.
  * Blocking; used from one worker thread. {@link #close()} may be called from any thread.
- * Ported from lens-spark@79d33c2 (link/GattChannel.java), with pre-API-33 GATT fallbacks
+ * Ported from lens-spark@3e2158f (link/GattChannel.java), with pre-API-33 GATT fallbacks
  * and write statistics removed.
  */
 @SuppressLint("MissingPermission")
@@ -37,19 +40,31 @@ public final class Go3GattChannel implements Go3Link.Transport {
     private static final String TAG = "InmoGo3";
     private static final UUID SERVICE = uuid16(0x2020), WRITE = uuid16(0x2021), NOTIFY = uuid16(0x2022), CCCD = uuid16(0x2902);
     private static final int CONNECTED = 1, MTU = 2, SERVICES = 3, DESCRIPTOR = 4, WRITTEN = 5, DISCONNECTED = 6;
+    /**
+     * How long a write may wait for the glasses before the link counts as dropped. Silences of ~1 s recover on
+     * their own, and closing early made Android drop the whole link, glasses audio included (2026-10-21).
+     */
+    static final int SILENT_WAIT_S = 25;
 
     private final Context context;
     private final BluetoothDevice device;
+    private final SendRate rate;
     private final BlockingQueue<int[]> events = new ArrayBlockingQueue<>(64);
     private volatile BluetoothGatt gatt;
     private BluetoothGattCharacteristic write;
     private volatile Consumer<byte[]> inbound;
     private volatile Runnable onLost;
     private volatile boolean opened, closed;
+    private final AtomicBoolean dropNoted = new AtomicBoolean();
+    // Everything written since the last confirmation, which the next confirmation covers. Guarded by "this".
+    private long sinceConfirmBytes, sinceConfirmStartedAt;
+    private int sinceConfirmWrites;
 
-    public Go3GattChannel(Context context, BluetoothDevice device) {
+    /** {@code rate} outlives this channel, so the rate and its marks survive reconnects. */
+    public Go3GattChannel(Context context, BluetoothDevice device, SendRate rate) {
         this.context = context.getApplicationContext();
         this.device = device;
+        this.rate = rate;
     }
 
     private final BluetoothGattCallback callback = new BluetoothGattCallback() {
@@ -59,6 +74,7 @@ public final class Go3GattChannel implements Go3Link.Transport {
             } else if (state == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
                 event(DISCONNECTED, status);
                 Runnable lost = onLost;
+                if (opened && !closed) noteDrop();
                 if (opened && !closed && lost != null) lost.run();
             }
         }
@@ -104,6 +120,7 @@ public final class Go3GattChannel implements Go3Link.Transport {
     @Override public void open(Consumer<byte[]> inbound, Runnable onLost) throws IOException {
         this.inbound = inbound;
         this.onLost = onLost;
+        rate.connectionStarted(System.nanoTime());
         BluetoothGatt connection;
         synchronized (this) {
             if (closed) throw new IOException("Cancelled");
@@ -165,29 +182,70 @@ public final class Go3GattChannel implements Go3Link.Transport {
             }
 
             @Override public void write(byte[] bytes, int offset, int length) throws IOException {
-                synchronized (Go3GattChannel.this) {
-                    BluetoothGatt connection = gatt;
-                    if (closed || connection == null || write == null) throw new IOException("Connection closed");
-                    byte[] frame = Arrays.copyOfRange(bytes, offset, offset + length);
-                    try {
-                        if (!writeCharacteristic(connection, write, frame))
-                            throw new IOException("The glasses rejected a write.");
-                        expect(WRITTEN, 5);
-                    } finally {
-                        Arrays.fill(frame, (byte) 0);
-                    }
+                byte[] frame = Arrays.copyOfRange(bytes, offset, offset + length);
+                try {
+                    submit(frame, SendRate.confirms(frame));
+                } finally {
+                    Arrays.fill(frame, (byte) 0);
                 }
             }
         };
     }
 
-    @SuppressWarnings("deprecation")
-    private static boolean writeCharacteristic(BluetoothGatt connection, BluetoothGattCharacteristic c, byte[] value) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return connection.writeCharacteristic(c, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
-                    == BluetoothStatusCodes.SUCCESS;
+    /** The link dropped while open: the next connection resumes at half the rate (once per connection). */
+    private void noteDrop() {
+        if (dropNoted.compareAndSet(false, true)) rate.dropped();
+    }
+
+    private void submit(byte[] frame, boolean confirm) throws IOException {
+        synchronized (this) {
+            if (sinceConfirmWrites == 0) sinceConfirmStartedAt = System.nanoTime();
         }
-        c.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        park(rate.waitNanos(frame.length, System.nanoTime()));
+        synchronized (this) {
+            BluetoothGatt connection = gatt;
+            if (closed || connection == null || write == null) throw new IOException("Connection closed");
+            long started = System.nanoTime();
+            sinceConfirmWrites++;
+            sinceConfirmBytes += frame.length;
+            int type = confirm ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
+            if (!writeCharacteristic(connection, write, frame, type))
+                throw new IOException("The glasses rejected a write.");
+            try {
+                // Android calls back for both write types; without response it means the stack has room again.
+                expect(WRITTEN, SILENT_WAIT_S);
+            } catch (IOException failure) {
+                if (!closed) noteDrop();
+                Bridge.log(TAG + ": gatt write failed: " + failure.getMessage());
+                throw failure;
+            }
+            long now = System.nanoTime();
+            long elapsedMs = (now - started) / 1_000_000;
+            if (elapsedMs > SendRate.BLOCKED_MS) {
+                Bridge.log(TAG + ": gatt write blocked ms=" + elapsedMs);
+                rate.blocked(now);
+            } else if (confirm) {
+                rate.confirmed(elapsedMs, sinceConfirmWrites, sinceConfirmBytes, now - sinceConfirmStartedAt, now);
+            }
+            if (confirm) {
+                sinceConfirmWrites = 0;
+                sinceConfirmBytes = 0;
+            }
+        }
+    }
+
+    private void park(long nanos) throws IOException {
+        long until = System.nanoTime() + nanos;
+        for (long left; (left = until - System.nanoTime()) > 0; ) LockSupport.parkNanos(left);
+        if (closed) throw new IOException("Connection closed");
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean writeCharacteristic(BluetoothGatt connection, BluetoothGattCharacteristic c, byte[] value, int type) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return connection.writeCharacteristic(c, value, type) == BluetoothStatusCodes.SUCCESS;
+        }
+        c.setWriteType(type);
         c.setValue(value);
         return connection.writeCharacteristic(c);
     }

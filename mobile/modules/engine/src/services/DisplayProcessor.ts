@@ -20,6 +20,7 @@ import {
   Z100_PROFILE,
   NEX_PROFILE,
   NIMO_PROFILE,
+  GO3_PROFILE,
   TextMeasurer,
   TextWrapper,
   ColumnComposer,
@@ -41,7 +42,17 @@ import {isGlassesConnected} from "./GlassesReadiness"
 /**
  * Supported device models for display processing
  */
-export type DeviceModel = "g1" | "g2" | "z100" | "nex" | "nimo" | "mach1" | "mentra-live" | "simulated" | "unknown"
+export type DeviceModel =
+  | "g1"
+  | "g2"
+  | "z100"
+  | "nex"
+  | "nimo"
+  | "inmo-go3"
+  | "mach1"
+  | "mentra-live"
+  | "simulated"
+  | "unknown"
 
 /**
  * Display event types that we process
@@ -212,6 +223,7 @@ const DEVICE_PROFILES: Record<DeviceModel, DisplayProfile> = {
   "z100": Z100_PROFILE,
   "nex": NEX_PROFILE,
   "nimo": NIMO_PROFILE,
+  "inmo-go3": GO3_PROFILE,
   "mach1": Z100_PROFILE, // Mach1 uses same hardware as Vuzix Z100
   "mentra-live": G1_PROFILE, // Mentra Live has no display, uses G1 as fallback
   "simulated": G1_PROFILE, // Simulated uses G1 profile
@@ -228,6 +240,9 @@ function normalizeModelName(modelName: string | null | undefined): DeviceModel {
 
   if (isNimoModelName(modelName)) {
     return "nimo"
+  }
+  if (lower.includes("inmo go3")) {
+    return "inmo-go3"
   }
   if (lower.includes("g2") || lower.includes("even realities g2")) {
     return "g2"

@@ -218,9 +218,12 @@ export const HARDWARE_CAPABILITIES: Record<string, Capabilities> = {
       ...none.display,
       canDisplayBitmap: true,
       resolution: { width: 640, height: 420 },
-      maxTextLines: 10,
+      maxTextLines: 18,
       adjustBrightness: false,
     },
+    // Classic Bluetooth audio (media and calls); Android routes phone audio to it.
+    hasSpeaker: true,
+    speaker: { count: 1, isPrivate: false },
   },
   [none.modelName]: none,
 };

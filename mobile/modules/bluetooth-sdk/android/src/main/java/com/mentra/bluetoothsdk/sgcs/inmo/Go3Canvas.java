@@ -19,10 +19,16 @@ import java.io.IOException;
  * Renders MentraOS display content as GO3 frames: a 640×480 PNG with content kept inside the
  * visible rows (below {@link Viewport#TOP}). The glasses show bright pixels as green on a clear
  * field, so everything is drawn bright on black.
+ *
+ * <p>Text is 18 px monospace on a 22 px line pitch: 55 columns by 18 lines. The engine's GO3 display
+ * profile ({@code modules/engine/src/utils/display/profiles/go3.ts}) wraps text for exactly these
+ * metrics, so keep the two in step.
  */
 public final class Go3Canvas {
-    static final int MARGIN = 24;
-    static final float TEXT_SIZE = 34f;
+    static final int SIDE_MARGIN = 16;
+    static final int TOP_MARGIN = 12;
+    static final float TEXT_SIZE = 18f;
+    static final int LINE_HEIGHT = 22;
 
     private Go3Canvas() { }
 
@@ -41,7 +47,7 @@ public final class Go3Canvas {
         Bitmap frame = newFrame();
         try {
             Canvas canvas = new Canvas(frame);
-            drawText(canvas, text, Viewport.TOP + MARGIN, Viewport.HEIGHT - MARGIN);
+            drawText(canvas, text, Viewport.TOP + TOP_MARGIN, Viewport.HEIGHT - TOP_MARGIN);
             return PngEncoder.encode(frame, Quality.FAST);
         } finally {
             frame.recycle();
@@ -54,8 +60,8 @@ public final class Go3Canvas {
         try {
             Canvas canvas = new Canvas(frame);
             int middle = Viewport.TOP + Viewport.CONTENT_HEIGHT / 2;
-            drawText(canvas, top, Viewport.TOP + MARGIN, middle - MARGIN / 2);
-            drawText(canvas, bottom, middle + MARGIN / 2, Viewport.HEIGHT - MARGIN);
+            drawText(canvas, top, Viewport.TOP + TOP_MARGIN, middle - TOP_MARGIN / 2);
+            drawText(canvas, bottom, middle + TOP_MARGIN / 2, Viewport.HEIGHT - TOP_MARGIN);
             return PngEncoder.encode(frame, Quality.FAST);
         } finally {
             frame.recycle();
@@ -95,17 +101,21 @@ public final class Go3Canvas {
         if (text == null || text.isEmpty() || bottom <= top) return;
         TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.WHITE);
-        paint.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+        // Monospace has no bold face on Android; fake bold keeps strokes legible without changing advances.
+        paint.setTypeface(Typeface.MONOSPACE);
+        paint.setFakeBoldText(true);
         paint.setTextSize(TEXT_SIZE);
-        int width = Viewport.WIDTH - 2 * MARGIN;
+        int width = Viewport.WIDTH - 2 * SIDE_MARGIN;
         StaticLayout layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, width)
                 .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                .setLineSpacing(LINE_HEIGHT - paint.getFontMetricsInt(null), 1f)
+                .setIncludePad(false)
                 .setEllipsize(TextUtils.TruncateAt.END)
-                .setMaxLines(Math.max(1, (bottom - top) / paint.getFontMetricsInt(null)))
+                .setMaxLines(Math.max(1, (bottom - top) / LINE_HEIGHT))
                 .build();
         canvas.save();
-        canvas.clipRect(MARGIN, top, MARGIN + width, bottom);
-        canvas.translate(MARGIN, top);
+        canvas.clipRect(SIDE_MARGIN, top, SIDE_MARGIN + width, bottom);
+        canvas.translate(SIDE_MARGIN, top);
         layout.draw(canvas);
         canvas.restore();
     }

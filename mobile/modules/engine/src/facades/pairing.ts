@@ -73,7 +73,7 @@ function projectTargetReady(options: Pick<PairingReadyWaitOptions, "deviceModel"
   const {deviceModel, deviceName} = options
   const glasses = useGlassesStore.getState()
 
-  if (deviceModel === ControllerTypes.R1) {
+  if (deviceModel === ControllerTypes.R1 || deviceModel === ControllerTypes.HID_RING) {
     if (!glasses.controllerConnected || !glasses.controllerFullyBooted) return false
     const settings = useSettingsStore.getState()
     const pairedModel = settings.getSetting(SETTINGS.default_controller.key)

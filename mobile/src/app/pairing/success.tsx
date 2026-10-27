@@ -211,6 +211,18 @@ export default function PairingSuccessScreen() {
         },
       ]
       break
+    case ControllerTypes.HID_RING:
+      steps = [
+        {
+          name: "Start Onboarding",
+          type: "image",
+          source: glassesImage,
+          transition: false,
+          title: translate("common:success"),
+          subtitle: translate("onboarding:bluetoothRingConnected"),
+        },
+      ]
+      break
   }
 
   return (

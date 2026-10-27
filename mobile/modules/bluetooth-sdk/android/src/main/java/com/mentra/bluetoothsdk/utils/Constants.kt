@@ -17,7 +17,9 @@ object DeviceTypes {
 
 object ControllerTypes {
     const val R1 = "Even Realities R1"
-    val ALL = arrayOf(R1)
+    /** A ring paired with the phone as a Bluetooth keyboard (controllers/HidRing.kt). */
+    const val HID_RING = "Bluetooth Ring"
+    val ALL = arrayOf(R1, HID_RING)
 }
 
 object ConnTypes {

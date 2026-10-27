@@ -17,4 +17,6 @@ export enum DeviceTypes {
 
 export enum ControllerTypes {
   R1 = "Even Realities R1",
+  /** A ring paired with the phone as a Bluetooth keyboard (INMO ring; R08 and Aivela pending). Android only. */
+  HID_RING = "Bluetooth Ring",
 }

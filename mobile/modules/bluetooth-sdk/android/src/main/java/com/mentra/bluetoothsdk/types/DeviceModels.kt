@@ -26,7 +26,8 @@ enum class DeviceModel(val deviceType: String) {
     AR99(DeviceTypes.AR99),
     INMO_GO3(DeviceTypes.INMO_GO3),
     SIMULATED(DeviceTypes.SIMULATED),
-    R1(ControllerTypes.R1);
+    R1(ControllerTypes.R1),
+    HID_RING(ControllerTypes.HID_RING);
 
     companion object {
         @JvmStatic

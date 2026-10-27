@@ -191,6 +191,11 @@ const en = {
       "Place your R1 in its charger and keep the charger plugged into power. Tap the ring's touchpad 5 times, then try pairing again.",
     r1PreviousPhone:
       "If your ring was previously paired with another phone, forget the ring in that phone's Bluetooth settings first. Then try pairing with this phone.",
+    bluetoothRingPairFirst:
+      "1. Pair your ring with this phone in Android Bluetooth settings, and make sure it shows as connected.",
+    bluetoothRingAccessibility:
+      "2. Turn on Mentra ring controls in Android Accessibility settings. This lets the ring control miniapps while the Mentra App is in the background, and stops it from also controlling your phone.",
+    bluetoothRingOpenAccessibility: "Open Accessibility settings",
     simulatedGlassesDescription: "Simulated Glasses allows you to run MentraOS without physical smart glasses.",
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
@@ -382,6 +387,7 @@ const en = {
     g1Connected: "Even Realities G1 connected",
     g2Connected: "Even Realities G2 connected",
     r1Connected: "Even Realities R1 connected",
+    bluetoothRingConnected: "Ring connected",
     nimoConnected: "NIMO connected",
     inmoGo3Connected: "INMO GO3 connected",
     osWelcomeTitle: "Welcome to Mentra",

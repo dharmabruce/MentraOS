@@ -710,6 +710,7 @@ export const DeviceModels = {
   Ar99: "AR99",
   InmoGo3: "INMO GO3",
   R1: "Even Realities R1",
+  HidRing: "Bluetooth Ring",
 } as const
 
 export type DeviceModel = (typeof DeviceModels)[keyof typeof DeviceModels]

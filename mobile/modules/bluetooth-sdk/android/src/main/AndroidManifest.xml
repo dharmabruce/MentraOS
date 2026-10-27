@@ -38,5 +38,16 @@
 
   <application>
     <service android:name="com.mentra.bluetoothsdk.services.ForegroundService" android:exported="false" android:foregroundServiceType="dataSync|connectedDevice|location|mediaPlayback|microphone"/>
+    <!-- Ring keys: a ring paired as a Bluetooth keyboard reaches Mentra through this service (controllers/HidRing.kt). -->
+    <service
+      android:name="com.mentra.bluetoothsdk.controllers.RingKeyService"
+      android:exported="false"
+      android:label="@string/ring_key_service_label"
+      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+      <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService"/>
+      </intent-filter>
+      <meta-data android:name="android.accessibilityservice" android:resource="@xml/ring_key_service"/>
+    </service>
   </application>
 </manifest>

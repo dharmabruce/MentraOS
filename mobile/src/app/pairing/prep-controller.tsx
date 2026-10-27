@@ -230,10 +230,40 @@ export default function PairingPrepScreen() {
     )
   }
 
+  const BluetoothRingPairingGuide = () => {
+    const {theme} = useAppTheme()
+
+    return (
+      <ScrollView
+        className="flex-1 mt-6"
+        contentContainerStyle={{paddingBottom: theme.spacing.s6}}
+        showsVerticalScrollIndicator>
+        <View style={{justifyContent: "flex-start", flexDirection: "column"}}>
+          <Text tx="pairing:instructions" className="text-2xl font-bold mb-4 text-secondary-foreground" />
+          <Text className="text-lg text-secondary-foreground mb-4" tx="pairing:bluetoothRingPairFirst" />
+          <Text className="text-lg text-secondary-foreground" tx="pairing:bluetoothRingAccessibility" />
+        </View>
+      </ScrollView>
+    )
+  }
+
+  const BluetoothRingButtons = () => (
+    <View className="gap-4">
+      <Button tx="pairing:g1Ready" onPress={advanceToPairing} />
+      <Button
+        tx="pairing:bluetoothRingOpenAccessibility"
+        preset="secondary"
+        onPress={() => Linking.sendIntent("android.settings.ACCESSIBILITY_SETTINGS")}
+      />
+    </View>
+  )
+
   const renderGuide = () => {
     switch (deviceModel) {
       case ControllerTypes.R1:
         return <R1PairingGuide />
+      case ControllerTypes.HID_RING:
+        return <BluetoothRingPairingGuide />
     }
 
     throw new Error(`Unknown model name: ${deviceModel}`)
@@ -243,6 +273,8 @@ export default function PairingPrepScreen() {
     switch (deviceModel) {
       case ControllerTypes.R1:
         return <R1Buttons />
+      case ControllerTypes.HID_RING:
+        return <BluetoothRingButtons />
       default:
         return <Button tx="common:continue" onPress={advanceToPairing} />
     }

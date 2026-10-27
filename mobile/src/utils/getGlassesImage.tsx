@@ -83,6 +83,7 @@ export const getGlassesImage = (glasses: string | null) => {
     case "frame":
       return require("../../assets/glasses/frame.png")
     case "Even Realities R1":
+    case "Bluetooth Ring":
       return require("../../assets/glasses/even_realities/r1/ring.png")
     default:
       return require("../../assets/glasses/g1.png")

@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import com.mentra.bluetoothsdk.controllers.ControllerManager
+import com.mentra.bluetoothsdk.controllers.HidRing
 import com.mentra.bluetoothsdk.controllers.R1
 import com.mentra.bluetoothsdk.services.ForegroundService
 import com.mentra.bluetoothsdk.services.G2ConnectionRecovery
@@ -1454,6 +1455,8 @@ class DeviceManager internal constructor(initializeHardware: Boolean) {
 
         if (controllerType == ControllerTypes.R1) {
             controller = R1()
+        } else if (controllerType == ControllerTypes.HID_RING) {
+            controller = HidRing()
         }
     }
 

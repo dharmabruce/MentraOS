@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MentraOS</string>
+    <string name="ring_key_service_label">Mentra ring controls</string>
+    <string name="ring_key_service_description">Lets a ring paired as a Bluetooth keyboard, such as the INMO ring, control Mentra miniapps while the Mentra App is in the background. Only that ring\'s keys are used; other keys and screen content are not read.</string>
 </resources>

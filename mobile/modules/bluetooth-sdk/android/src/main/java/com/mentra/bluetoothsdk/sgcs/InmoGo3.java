@@ -43,13 +43,20 @@ public class InmoGo3 extends SGCManager {
   static final String NAME_PREFIX = "INMO GO3";
   private static final long CHECK_TO_SESSION_PAUSE_MS = 500;
   private static final long RECONNECT_DELAY_MS = 2000;
-  private static final int MAX_RECONNECT_ATTEMPTS = 5;
+  /**
+   * Reconnect delays grow by RECONNECT_DELAY_MS per attempt up to this ceiling, and attempts never stop while the
+   * glasses are wanted: they go out of range or to sleep for minutes (seen 2026-10-26), and five attempts in a
+   * minute left them disconnected for good.
+   */
+  private static final long MAX_RECONNECT_DELAY_MS = 30_000;
   /**
    * The first image after connecting can reach the glasses before their Navigation app is ready, leaving only
    * the empty Navigation view (seen on hardware 2026-10-24, and in lens-spark@3e2158f). The newest frame is
    * sent once more this long after every connect.
    */
   private static final long SETTLE_RESEND_MS = 2000;
+  /** The display goes blank after this long without a new frame, so stale text doesn't stay lit. */
+  private static final long IDLE_BLANK_MS = 20_000;
 
   private final Context context;
   private final ScheduledExecutorService worker =
@@ -66,6 +73,8 @@ public class InmoGo3 extends SGCManager {
   private boolean drainScheduled;
   /** The last frame sent; shown again after a reconnect and by the settle resend. */
   private byte[] lastFrame;
+  /** Counts frames sent; an idle blank fires only if no frame was sent after it was scheduled. */
+  private long framesSent;
   /** True between connectById() and disconnect(); drives automatic reconnects. */
   private volatile boolean wanted;
 
@@ -190,10 +199,11 @@ public class InmoGo3 extends SGCManager {
 
   /** Worker: reconnects straight to a no-login session, as lens-spark does (no binding check). */
   private void scheduleReconnect() {
-    if (!wanted || reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
+    if (!wanted) return;
     reconnectAttempts++;
+    long delay = Math.min(RECONNECT_DELAY_MS * reconnectAttempts, MAX_RECONNECT_DELAY_MS);
     try {
-      worker.schedule(() -> connect(false), RECONNECT_DELAY_MS * reconnectAttempts, TimeUnit.MILLISECONDS);
+      worker.schedule(() -> connect(false), delay, TimeUnit.MILLISECONDS);
     } catch (RejectedExecutionException shutDown) {
       // cleanup() already ran.
     }
@@ -287,13 +297,34 @@ public class InmoGo3 extends SGCManager {
         continue;
       }
       if (!send(png)) return;
+      scheduleIdleBlank();
+    }
+  }
+
+  /** Worker: blanks the display after {@link #IDLE_BLANK_MS} unless another frame is sent first. */
+  private void scheduleIdleBlank() {
+    long sent = framesSent;
+    try {
+      worker.schedule(() -> blankIfIdle(sent), IDLE_BLANK_MS, TimeUnit.MILLISECONDS);
+    } catch (RejectedExecutionException shutDown) {
+      // cleanup() already ran.
+    }
+  }
+
+  /** Worker: the idle blank, unless a frame was sent or queued since, or the session is gone. */
+  private void blankIfIdle(long sent) {
+    if (framesSent != sent || session == null || pendingFrame.get() != null) return;
+    try {
+      send(Go3Canvas.blank());
+    } catch (IOException renderFailure) {
+      Bridge.log(TAG + ": idle blank not rendered: " + renderFailure.getMessage());
     }
   }
 
   /** Worker: the settle resend, unless the session changed or a newer frame is already queued. */
   private void resendAfterSettle(Go3Link started) {
     if (session != started || pendingFrame.get() != null || lastFrame == null) return;
-    send(lastFrame);
+    if (send(lastFrame)) scheduleIdleBlank();
   }
 
   /** Worker: shows one frame. On failure, drops the session and schedules a reconnect. */
@@ -301,6 +332,7 @@ public class InmoGo3 extends SGCManager {
     try {
       session.showImage(png);
       lastFrame = png;
+      framesSent++;
       return true;
     } catch (IOException failure) {
       Bridge.log(TAG + ": frame not sent: " + failure.getMessage());

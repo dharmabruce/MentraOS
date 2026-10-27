@@ -27,6 +27,7 @@ export function App() {
   const {
     settings,
     canPosition,
+    maxLines,
     updateLanguage,
     updateHints,
     updateUseOfflineStt,
@@ -108,6 +109,7 @@ export function App() {
             <Settings
               settings={settings}
               canPosition={canPosition}
+              maxLines={maxLines}
               displayPreview={displayPreview}
               accentColor={presentation.accentColor}
               accentForeground={presentation.accentForeground}

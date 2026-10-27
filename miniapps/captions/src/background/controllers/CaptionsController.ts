@@ -344,7 +344,8 @@ export class CaptionsController {
   }
 
   private async setDisplayLines(lines: number): Promise<void> {
-    if (lines < 2 || lines > 5) return
+    if (!Number.isInteger(lines) || lines < 2 || lines > Math.max(5, this.getDisplayCapabilities().maxLines ?? 5))
+      return
     this.settings.displayLines = lines
     await this.persist(STORAGE_KEYS.displayLines, lines.toString())
     this.applySettingsToDisplay()
@@ -404,6 +405,10 @@ export class CaptionsController {
   private getDisplayCapabilities(): CaptionsDisplayCapabilities {
     return {
       canPosition: this.session.capabilities?.display?.canPosition === true,
+      maxLines: (() => {
+        const maxTextLines = (this.session.capabilities?.display as {maxTextLines?: unknown} | undefined)?.maxTextLines
+        return typeof maxTextLines === "number" && maxTextLines > 0 ? maxTextLines : null
+      })(),
     }
   }
 

@@ -11,6 +11,8 @@ import {DisplayPreview} from "../hooks/useTranscripts"
 interface SettingsProps {
   settings: CaptionSettings | null
   canPosition: boolean
+  /** Text lines the glasses can show; more line choices are offered when it's above 5. */
+  maxLines: number | null
   displayPreview: DisplayPreview | null
   accentColor?: string
   accentForeground?: string
@@ -25,6 +27,7 @@ interface SettingsProps {
 export function Settings({
   settings,
   canPosition,
+  maxLines,
   displayPreview,
   accentColor = "#6DAEA6",
   accentForeground = "#FFFFFF",
@@ -208,7 +211,7 @@ export function Settings({
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-              {[2, 3, 4, 5].map((lines) => (
+              {displayLineOptions(maxLines).map((lines) => (
                 <button
                   key={lines}
                   onClick={() => handleDisplayLinesChange(lines)}
@@ -417,4 +420,9 @@ export function Settings({
       </div>
     </div>
   )
+}
+
+/** Line-count choices: 2–5 everywhere, plus taller choices up to what the glasses can show (e.g. INMO GO3). */
+function displayLineOptions(maxLines: number | null): number[] {
+  return [2, 3, 4, 5, 6, 8, 10, 12].filter((lines) => lines <= 5 || (maxLines !== null && lines <= maxLines))
 }

@@ -16,6 +16,7 @@ export type {CaptionSettings} from "../../shared/types"
 export function useSettings() {
   const [settings, setSettings] = useState<CaptionSettings | null>(null)
   const [canPosition, setCanPosition] = useState(false)
+  const [maxLines, setMaxLines] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const mountedRef = useRef(true)
 
@@ -33,6 +34,7 @@ export function useSettings() {
         }
         setSettings(snapshot.settings)
         setCanPosition(snapshot.displayCapabilities?.canPosition === true)
+        setMaxLines(snapshot.displayCapabilities?.maxLines ?? null)
         setLoading(false)
       }),
     )
@@ -40,7 +42,9 @@ export function useSettings() {
     offs.push(
       on("captions:display-capabilities", (payload) => {
         if (!mountedRef.current) return
-        setCanPosition((payload as CaptionsDisplayCapabilities).canPosition === true)
+        const capabilities = payload as CaptionsDisplayCapabilities
+        setCanPosition(capabilities.canPosition === true)
+        setMaxLines(capabilities.maxLines ?? null)
       }),
     )
 
@@ -109,6 +113,7 @@ export function useSettings() {
   return {
     settings,
     canPosition,
+    maxLines,
     loading,
     error: null as string | null,
     updateLanguage,

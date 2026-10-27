@@ -32,6 +32,8 @@ export interface CaptionSettings {
 /** Display capabilities needed by the settings UI. */
 export interface CaptionsDisplayCapabilities {
   canPosition: boolean
+  /** Text lines the connected glasses can show, or null when they don't say. */
+  maxLines: number | null
 }
 
 /** A single transcript entry shown in the UI's transcript list. */
